@@ -16,15 +16,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm' # Cache pnpm modules
-
-      - name: Install pnpm globally
-        run: npm install -g pnpm # Explicitly install pnpm globally
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile # Use --frozen-lockfile for CI to ensure exact versions
 
