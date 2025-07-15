@@ -423,8 +423,8 @@ describe("API Integration Tests", () => {
       expect(response.body.success).toBe(true)
       const responseData = response.body.data as LoanResponseData[] // Cast to expected type
       expect(responseData).toHaveLength(2)
-      expect(responseData[0].id).toBe(mockLoans[2]!.id) // Assuming orderBy desc, so latest first
-      expect(responseData[1].id).toBe(mockLoans[1]!.id)
+      expect(responseData[0]?.id).toBe(mockLoans[2]!.id) // Assuming orderBy desc, so latest first
+      expect(responseData[1]?.id).toBe(mockLoans[1]!.id)
       expect(response.body.meta).toEqual({
         totalCount: mockLoans.length,
         currentPage: 2,

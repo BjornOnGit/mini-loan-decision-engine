@@ -3,6 +3,7 @@ import app from "../src/app"
 import { prisma } from "../src/config/database"
 
 // Mock Prisma
+// Ensure 'jest' is not imported here, it's globally available
 jest.mock("../src/config/database", () => ({
   prisma: {
     user: {
@@ -40,7 +41,7 @@ describe("Error Handler", () => {
 
   it("should handle internal server errors", async () => {
     // Mock a database error
-    mockPrisma.user.create = jest.fn().mockRejectedValue(new Error("Database connection failed"))
+    (mockPrisma.user.create as jest.Mock).mockImplementation(() => Promise.reject(new Error("Database connection failed")))
 
     const response = await request(app).post("/users").send({
       email: "test@example.com",

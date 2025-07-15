@@ -44,11 +44,13 @@ export const getUserLoansSchema = z.object({
   }),
   query: z.object({
     page: z.preprocess(
-      (val) => Number.parseInt(String(val), 10),
+      // If value is undefined or empty string, treat as undefined to allow .optional().default() to apply
+      (val) => (val === undefined || val === "" ? undefined : Number.parseInt(String(val), 10)),
       z.number().int().positive("Page must be a positive integer").optional().default(1),
     ),
     limit: z.preprocess(
-      (val) => Number.parseInt(String(val), 10),
+      // If value is undefined or empty string, treat as undefined to allow .optional().default() to apply
+      (val) => (val === undefined || val === "" ? undefined : Number.parseInt(String(val), 10)),
       z.number().int().positive("Limit must be a positive integer").optional().default(10),
     ),
   }),
@@ -58,11 +60,19 @@ export const getUserLoansSchema = z.object({
 export const validate = (schema: z.ZodSchema<any>) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse({
+      // Parse and validate the request parts
+      const parsed = schema.parse({
         body: req.body,
         query: req.query,
         params: req.params,
       })
+
+      // Assign the parsed (and defaulted) values back to req.query and req.params
+      // This ensures the controller receives the correctly typed and defaulted values
+      req.body = parsed.body || req.body // Only update if schema has a body
+      req.query = parsed.query || req.query // Only update if schema has a query
+      req.params = parsed.params || req.params // Only update if schema has params
+
       next()
     } catch (error) {
       if (error instanceof ZodError) {

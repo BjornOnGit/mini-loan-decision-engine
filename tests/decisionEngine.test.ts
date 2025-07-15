@@ -1,20 +1,11 @@
 import { evaluateLoanApplication, type LoanDecisionInput } from "../src/services/decisionEngineService"
 import { prisma } from "../src/config/database"
-import { loanDecisionCache } from "../src/utils/cache" // Import the cache instance directly
-
-// Ensure loanDecisionCache is the actual cache instance with a set method
-// Use loanDecisionCache directly as the cache instance
-
-// Mock the set method if it's not defined (for testing)
-if (typeof loanDecisionCache.set !== "function") {
-  loanDecisionCache.set = jest.fn()
-} else {
-  // Always ensure it's a jest mock for test consistency
-  loanDecisionCache.set = jest.fn(loanDecisionCache.set)
-}
+import { loanDecisionCache } from "../src/utils/cache" // Import the cache
+import { jest } from "@jest/globals" // Declare the jest variable
 
 // Mock Prisma
 // Define the mock function directly within the jest.mock factory
+// Ensure 'jest' is not imported here, it's globally available
 jest.mock("../src/config/database", () => {
   const findUniqueMock = jest.fn()
   return {
@@ -28,11 +19,18 @@ jest.mock("../src/config/database", () => {
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
+describe("DecisionEngineService", () => {
   beforeEach(() => {
     // Clear all mocks, including the one defined in the factory
     jest.clearAllMocks()
     loanDecisionCache.clear() // Clear cache before each test
   })
+
+  // Add afterEach to ensure cache is cleared after every test
+  afterEach(() => {
+    loanDecisionCache.clear() // Clear cache after each test to prevent open handles
+  })
+
   describe("Caching behavior", () => {
     it("should return cached decision if available", async () => {
       const input: LoanDecisionInput = {
@@ -68,7 +66,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
       const cacheKey = `loan_decision:${input.userId}:${input.requestedAmount}:${input.duration}`
 
       // Mock Prisma to return a user that will lead to approval
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
         id: input.userId,
         email: "newcache@example.com",
         fullName: "New Cache User",
@@ -81,7 +79,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       // First call: should evaluate and cache
       const firstResult = await evaluateLoanApplication(input)
@@ -109,12 +107,14 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
       const mockExpiredDecision = {
         approved: false,
         status: "rejected",
-        reason: "Expired decision",
+        reason: "Expired cached decision",
       }
 
       // Manually put an expired decision in the cache (TTL of 0 seconds)
-      loanDecisionCache.set(cacheKey, mockExpiredDecision, 0)
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      loanDecisionCache.set(cacheKey, mockExpiredDecision, 0) // This will now effectively not cache it
+
+      // Mock Prisma to return a user that will lead to approval for the re-evaluation
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
         id: input.userId,
         email: "expired@example.com",
         fullName: "Expired Cache User",
@@ -127,7 +127,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       // Call the service
       const result = await evaluateLoanApplication(input)
@@ -137,11 +137,13 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
       expect(result.reason).not.toBe(mockExpiredDecision.reason)
       // Expect Prisma to have been called for re-evaluation
       expect(mockPrisma.user.findUnique).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe("User validation", () => {
     it("should reject if user not found", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(null)
+      mockPrisma.user.findUnique.mockReset() // Ensure mock is clean for this test
+      mockPrisma.user.findUnique.mockResolvedValue(null)
 
       const result = await evaluateLoanApplication({
         userId: "non-existent",
@@ -155,14 +157,14 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
     })
 
     it("should reject if no KYC info", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
         createdAt: new Date(),
         kycInfo: null,
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -178,7 +180,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
   describe("Income validation", () => {
     it("should reject if income below 50,000", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -191,7 +193,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -205,7 +207,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
     })
 
     it("should pass income validation with exactly 50,000", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -218,7 +220,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -234,7 +236,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
   describe("Employment validation", () => {
     it("should reject if no employer", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -247,7 +249,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -261,7 +263,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
     })
 
     it("should reject if employer is only whitespace", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -274,7 +276,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -290,7 +292,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
   describe("Debt-to-Income ratio validation", () => {
     it("should reject if DTI ratio exceeds 40%", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -313,7 +315,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
             createdAt: new Date(),
           },
         ],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -329,7 +331,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
     })
 
     it("should approve if DTI ratio is exactly 40%", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -352,7 +354,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
             createdAt: new Date(),
           },
         ],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -367,7 +369,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
     })
 
     it("should only count approved loans in DTI calculation", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -394,7 +396,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           // The mock should reflect what Prisma would return after filtering.
           // So, we only include the approved loan in the mock's `loans` array.
         ],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -410,7 +412,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
   describe("Approval scenarios", () => {
     it("should approve if all rules pass with no existing loans", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -423,7 +425,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -438,7 +440,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
     })
 
     it("should approve with high income and large loan amount", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: "user1",
         email: "test@example.com",
         fullName: "Test User",
@@ -451,7 +453,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
           createdAt: new Date(),
         },
         loans: [],
-      })
+      } as any)
 
       const result = await evaluateLoanApplication({
         userId: "user1",
@@ -467,7 +469,7 @@ const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
   describe("Error handling", () => {
     it("should handle database errors gracefully", async () => {
-      (mockPrisma.user.findUnique as jest.Mock).mockRejectedValue(new Error("Database connection failed"))
+      mockPrisma.user.findUnique.mockRejectedValue(new Error("Database connection failed"))
 
       const result = await evaluateLoanApplication({
         userId: "user1",

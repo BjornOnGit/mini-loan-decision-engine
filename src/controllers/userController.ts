@@ -3,7 +3,7 @@ import { createUser, getUserByEmail, userExists } from "../services/userService"
 import { getUserLoans } from "../services/loanService"
 import { asyncHandler } from "../middlewares/errorHandler"
 import { ConflictError, NotFoundError } from "../utils/errors"
-import { LoanApplication } from "@prisma/client"
+import type { LoanApplication } from "@prisma/client" // Import LoanApplication type
 
 export const createUserController = asyncHandler(async (req: Request, res: Response) => {
   const { email, fullName } = req.body
@@ -31,7 +31,9 @@ export const createUserController = asyncHandler(async (req: Request, res: Respo
 
 export const getUserLoansController = asyncHandler(async (req: Request, res: Response) => {
   const { id: userId } = req.params
-  const { page, limit } = req.query as { page?: string; limit?: string } // Zod will handle parsing to number
+  // Safely extract and convert query parameters to numbers with defaults
+  const page = Number(req.query.page) || 1
+  const limit = Number(req.query.limit) || 10
 
   // Check if userId is provided
   if (!userId) {
@@ -53,14 +55,15 @@ export const getUserLoansController = asyncHandler(async (req: Request, res: Res
     totalPages,
   } = await getUserLoans(
     userId,
-    Number(page), // Zod ensures these are numbers or defaults
-    Number(limit),
+    page, // Pass directly, no need for Number() cast
+    limit, // Pass directly, no need for Number() cast
   )
 
   res.status(200).json({
     success: true,
     message: "User loan history retrieved successfully",
     data: loans.map((loan: LoanApplication) => ({
+      // Explicitly type 'loan'
       id: loan.id,
       amount: loan.amount,
       duration: loan.duration,

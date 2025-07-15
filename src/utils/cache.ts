@@ -16,6 +16,11 @@ class InMemoryCache {
    * @param ttlSeconds The time-to-live for the entry in seconds. Defaults to 300 seconds (5 minutes).
    */
   set<T>(key: string, value: T, ttlSeconds = 300): void {
+    if (ttlSeconds <= 0) {
+      // If TTL is 0 or negative, effectively don't cache or immediately expire
+      this.delete(key)
+      return
+    }
     const expiry = Date.now() + ttlSeconds * 1000
     this.cache.set(key, { value, expiry })
     this.scheduleCleanup(key, ttlSeconds * 1000)
