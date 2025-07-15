@@ -25,8 +25,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8 # Or your desired pnpm version
+          version: 8
 
+      - name: Install pnpm
+        run: npm install -g pnpm  # Ensures pnpm is available
+        
       - name: Install dependencies
         run: pnpm install --frozen-lockfile # Use --frozen-lockfile for CI to ensure exact versions
 

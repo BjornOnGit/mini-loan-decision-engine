@@ -18,10 +18,10 @@ A backend service that mimics how micro-lending platforms evaluate user eligibil
 
 ## Getting Started
 
-\`\`\`bash
+```bash
 pnpm add .
 pnpm run dev
-\`\`\`
+```
 
 ## API Endpoints
 
