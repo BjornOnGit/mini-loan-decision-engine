@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: 3000
+      NODE_ENV: production # Or production, depending on your needs
+    # If you need to run Prisma migrations on startup (e.g., for local dev)
+    # command: sh -c "pnpm run db:push && pnpm start"
+
+volumes:
+  db_data:

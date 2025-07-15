@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"] // Added this line
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String            @id @default(uuid())
+  email     String            @unique
+  fullName  String
+  createdAt DateTime          @default(now())
+  kycInfo   KYCInfo?
+  loans     LoanApplication[]
+
+  @@map("users")
+}
+
+model KYCInfo {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  income    Int
+  employer  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("kyc_info")
+}
+
+model LoanApplication {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Int
+  duration  Int
+  status    String
+  reason    String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("loan_applications")
+}

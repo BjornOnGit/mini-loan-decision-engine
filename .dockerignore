@@ -1,0 +1,38 @@
+# Ignore node_modules, as they are installed in the Dockerfile
+node_modules
+
+# Ignore environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore Git-related files
+.git
+.gitignore
+
+# Ignore build output, as it's generated inside the container
+dist
+build
+
+# Ignore logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore test files and coverage reports
+tests/
+coverage/
+.nyc_output
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Removed 'prisma/' from here so schema.prisma is copied for db:generate
+# The 'dist' folder copied in the second stage contains the generated Prisma client.
