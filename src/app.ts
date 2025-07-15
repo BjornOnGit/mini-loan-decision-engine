@@ -10,8 +10,13 @@ import loanRoutes from "./routes/loanRoutes"
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler"
 // Import rate limiting middleware
 import { apiLimiter } from "./middlewares/rateLimiter"
+import swaggerUi from "swagger-ui-express"
+import YAML from "yamljs"
+import path from "path"
 
 const app: express.Application = express()
+
+const swaggerDocument = YAML.load(path.resolve(__dirname, "../swagger.yaml"))
 
 // Apply rate limiting to all requests
 app.use(apiLimiter)
@@ -50,6 +55,9 @@ app.get("/health", async (req, res) => {
     })
   }
 })
+
+// Serve Swagger API documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 // Mount routes
 app.use("/users", userRoutes)

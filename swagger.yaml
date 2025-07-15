@@ -1,0 +1,437 @@
+openapi: 3.0.0
+info:
+  title: Mini Loan Decision Engine API
+  version: 1.0.0
+  description: A backend service that mimics how micro-lending platforms evaluate user eligibility and approve/reject loan applications.
+
+servers:
+  - url: http://localhost:3000
+    description: Local Development Server
+
+tags:
+  - name: Users
+    description: User registration and management
+  - name: KYC
+    description: Know Your Customer (KYC) information submission
+  - name: Loans
+    description: Loan application and status management
+
+paths:
+  /users:
+    post:
+      summary: Register a new user
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - fullName
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                fullName:
+                  type: string
+                  example: John Doe
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: A user with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}/kyc:
+    post:
+      summary: Submit KYC information for a user
+      tags:
+        - KYC
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The ID of the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - income
+                - employer
+              properties:
+                income:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  example: 75000
+                employer:
+                  type: string
+                  example: Acme Corp
+      responses:
+        '201':
+          description: KYC information submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KYCResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User with this ID does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: KYC information already submitted for this user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}/loans:
+    get:
+      summary: Get a user's loan history with pagination
+      tags:
+        - Users
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The ID of the user
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+          description: Number of items per page
+      responses:
+        '200':
+          description: User loan history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User loan history retrieved successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LoanApplicationResponse'
+                  meta:
+                    type: object
+                    properties:
+                      totalCount:
+                        type: integer
+                        example: 5
+                      currentPage:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 10
+                      totalPages:
+                        type: integer
+                        example: 1
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User with this ID does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /loans:
+    post:
+      summary: Submit a new loan application
+      tags:
+        - Loans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - amount
+                - duration
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                  example: 123e4567-e89b-12d3-a456-426614174000
+                amount:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 1000000
+                  example: 10000
+                duration:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  maximum: 360
+                  example: 12
+      responses:
+        '201':
+          description: Loan application approved (or created as pending)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanApplicationResponse'
+        '200':
+          description: Loan application rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanApplicationResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User with this ID does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /loans/{id}:
+    get:
+      summary: Get details of a specific loan application
+      tags:
+        - Loans
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The ID of the loan application
+      responses:
+        '200':
+          description: Loan retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Loan retrieved successfully
+                  data:
+                    $ref: '#/components/schemas/LoanDetailsResponse'
+        '400':
+          description: Invalid loan ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Loan with this ID does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        fullName:
+          type: string
+          example: John Doe
+        createdAt:
+          type: string
+          format: date-time
+          example: '2023-10-27T10:00:00Z'
+    KYCResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        userId:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        income:
+          type: integer
+          example: 75000
+        employer:
+          type: string
+          example: Acme Corp
+        createdAt:
+          type: string
+          format: date-time
+          example: '2023-10-27T10:00:00Z'
+    LoanApplicationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        userId:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        amount:
+          type: integer
+          example: 10000
+        duration:
+          type: integer
+          example: 12
+        status:
+          type: string
+          enum: [approved, rejected, pending]
+          example: approved
+        reason:
+          type: string
+          nullable: true
+          example: "Loan approved. DTI ratio: 25.0%"
+        createdAt:
+          type: string
+          format: date-time
+          example: '2023-10-27T10:00:00Z'
+    LoanDetailsResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        userId:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        amount:
+          type: integer
+          example: 10000
+        duration:
+          type: integer
+          example: 12
+        status:
+          type: string
+          enum: [approved, rejected, pending]
+          example: approved
+        reason:
+          type: string
+          nullable: true
+          example: "Loan approved. DTI ratio: 25.0%"
+        createdAt:
+          type: string
+          format: date-time
+          example: '2023-10-27T10:00:00Z'
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: 123e4567-e89b-12d3-a456-426614174000
+            email:
+              type: string
+              format: email
+              example: user@example.com
+            fullName:
+              type: string
+              example: John Doe
+            hasKYC:
+              type: boolean
+              example: true
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Client Error
+        message:
+          type: string
+          example: Invalid input data
+        timestamp:
+          type: string
+          format: date-time
+          example: '2023-10-27T10:00:00Z'
+        path:
+          type: string
+          example: /users
+        method:
+          type: string
+          example: POST
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: body.email
+              message:
+                type: string
+                example: Invalid email format

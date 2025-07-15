@@ -22,8 +22,10 @@ jobs:
           node-version: '20'
           cache: 'pnpm' # Cache pnpm modules
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8 # Or your desired pnpm version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile # Use --frozen-lockfile for CI to ensure exact versions

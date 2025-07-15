@@ -29,13 +29,17 @@
   "dependencies": {
     "@jest/globals": "^30.0.4",
     "@prisma/client": "^5.0.0",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
+    "@types/yamljs": "^0.2.34",
     "cors": "^2.8.5",
     "express": "^4.18.0",
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.0.0",
     "morgan": "^1.10.0",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
+    "yamljs": "^0.3.0",
     "zod": "^3.25.75"
   },
   "devDependencies": {
