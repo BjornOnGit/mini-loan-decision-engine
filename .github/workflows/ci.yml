@@ -22,8 +22,8 @@ jobs:
           node-version: '20'
           cache: 'pnpm' # Cache pnpm modules
 
-      - name: Enable Corepack
-        run: corepack enable # This enables pnpm and yarn
+      - name: Install pnpm globally
+        run: npm install -g pnpm # Explicitly install pnpm globally
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile # Use --frozen-lockfile for CI to ensure exact versions
