@@ -1,6 +1,7 @@
-import { LoanApplication } from "@prisma/client"
 import { prisma } from "../config/database"
 import { loanDecisionCache } from "../utils/cache" // Import the cache utility
+import type { LoanApplication } from "@prisma/client" // Import LoanApplication type
+import { loanDecisionsTotal } from "../utils/metrics" // Import the metric
 
 export interface LoanDecisionInput {
   userId: string
@@ -45,6 +46,7 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
         reason: "User not found",
       } as LoanDecision
       loanDecisionCache.set(cacheKey, decision, 60) // Cache rejection for a short period
+      loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
       return decision
     }
 
@@ -56,6 +58,7 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
         reason: "KYC information required",
       } as LoanDecision
       loanDecisionCache.set(cacheKey, decision, 60)
+      loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
       return decision
     }
 
@@ -67,6 +70,7 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
         reason: "Income below minimum threshold of $50,000",
       } as LoanDecision
       loanDecisionCache.set(cacheKey, decision, 60)
+      loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
       return decision
     }
 
@@ -78,12 +82,13 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
         reason: "Employment information required",
       } as LoanDecision
       loanDecisionCache.set(cacheKey, decision, 60)
+      loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
       return decision
     }
 
     // Rule 4: Calculate debt-to-income ratio
     // Sum of all existing approved loan amounts + new requested amount
-    const existingLoanTotal = user.loans.reduce((sum: number, loan: LoanApplication) => sum + loan.amount, 0)
+    const existingLoanTotal = user.loans.reduce((sum: number, loan: LoanApplication) => sum + loan.amount, 0) // Explicitly type 'sum' and 'loan'
     const totalDebt = existingLoanTotal + input.requestedAmount
     const debtToIncomeRatio = totalDebt / user.kycInfo.income
 
@@ -94,6 +99,7 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
         reason: `Debt-to-income ratio (${(debtToIncomeRatio * 100).toFixed(1)}%) exceeds maximum of 40%`,
       } as LoanDecision
       loanDecisionCache.set(cacheKey, decision, 60)
+      loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
       return decision
     }
 
@@ -104,6 +110,7 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
       reason: `Loan approved. DTI ratio: ${(debtToIncomeRatio * 100).toFixed(1)}%`,
     } as LoanDecision
     loanDecisionCache.set(cacheKey, decision, 300) // Cache approval for longer
+    loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
     return decision
   } catch (error) {
     console.error("Error evaluating loan application:", error)
@@ -113,6 +120,7 @@ export const evaluateLoanApplication = async (input: LoanDecisionInput): Promise
       reason: "Error processing application",
     } as LoanDecision
     loanDecisionCache.set(cacheKey, decision, 10) // Cache error for a very short period
+    loanDecisionsTotal.inc({ status: decision.status }) // Increment metric
     return decision
   }
 }

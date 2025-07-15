@@ -3,6 +3,7 @@ import { createLoan, getLoanById } from "../services/loanService"
 import { userExists } from "../services/userService"
 import { asyncHandler } from "../middlewares/errorHandler"
 import { NotFoundError } from "../utils/errors"
+import { loanApplicationsTotal } from "../utils/metrics" // Import the metric
 
 export const createLoanController = asyncHandler(async (req: Request, res: Response) => {
   const { userId, amount, duration } = req.body
@@ -12,6 +13,9 @@ export const createLoanController = asyncHandler(async (req: Request, res: Respo
   if (!userExistsCheck) {
     throw new NotFoundError("User with this ID does not exist")
   }
+
+  // Increment total loan applications counter
+  loanApplicationsTotal.inc()
 
   // Create loan application (decision will be applied automatically)
   const loan = await createLoan({ userId, amount, duration })

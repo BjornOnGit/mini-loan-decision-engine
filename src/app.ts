@@ -13,6 +13,7 @@ import { apiLimiter } from "./middlewares/rateLimiter"
 import swaggerUi from "swagger-ui-express"
 import YAML from "yamljs"
 import path from "path"
+import { register, httpRequestDurationSeconds } from "./utils/metrics"
 
 const app: express.Application = express()
 
@@ -34,6 +35,14 @@ app.use(morgan("combined"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.status(200).json({
+      status: "OK",
+      message: "Welcome to the Mini Loan Decision Engine",
+    })
+})
+
 // Health check endpoint
 app.get("/health", async (req, res) => {
   try {
@@ -54,6 +63,12 @@ app.get("/health", async (req, res) => {
       timestamp: new Date().toISOString(),
     })
   }
+})
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+  res.setHeader("Content-Type", register.contentType)
+  res.end(await register.metrics())
 })
 
 // Serve Swagger API documentation
