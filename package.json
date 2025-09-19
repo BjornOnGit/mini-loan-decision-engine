@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
+    "build": "pnpm exec prisma generate && tsc",
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -17,15 +17,6 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
   },
-  "keywords": [
-    "loan",
-    "decision-engine",
-    "fintech",
-    "nodejs",
-    "typescript"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "@jest/globals": "^30.0.4",
     "@prisma/client": "^5.0.0",
@@ -60,21 +51,5 @@
     "ts-jest": "^29.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.0.0"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/src",
-      "<rootDir>/tests"
-    ],
-    "testMatch": [
-      "**/__tests__/**/*.ts",
-      "**/?(*.)+(spec|test).ts"
-    ],
-    "collectCoverageFrom": [
-      "src/**/*.ts",
-      "!src/**/*.d.ts"
-    ]
   }
 }
